@@ -97,10 +97,14 @@ async def execute_intent(state: AgentState) -> AgentState:
                 price=float(arguments.get("price") or 0),
                 dp=float(arguments.get("dp") or 0),
             )
-
+            
         elif intent == "calculate_receivables":
             result = await mcp_client.calculate_receivables(
-                status=arguments.get("status") or "In progress",
+                statuses=arguments.get("statuses")
+                or [
+                    "In progress",
+                    "Under review",
+                ],
             )
 
         elif intent == "task_statistics":
@@ -108,6 +112,11 @@ async def execute_intent(state: AgentState) -> AgentState:
 
         elif intent == "weekly_summary":
             result = await mcp_client.weekly_summary()
+            
+        elif intent == "recommend_today_focus":
+            result = await mcp_client.recommend_today_focus(
+                limit=int(arguments.get("limit") or 5),
+            )
 
         else:
             return {
@@ -133,11 +142,12 @@ async def execute_intent(state: AgentState) -> AgentState:
 
 def format_receivables(data: dict[str, Any]) -> str:
     unpaid_tasks = data.get("unpaid_tasks") or []
+    status_filters = data.get("status_filters") or []
 
     lines = [
         "💰 Piutang Aktif",
         "",
-        f"Status filter: {data.get('status_filter')}",
+        f"Status filter: {', '.join(status_filters)}",
         f"Total piutang: {format_rupiah(data.get('total_receivables'))}",
         f"Jumlah task belum lunas: {data.get('unpaid_task_count')}",
     ]
@@ -149,9 +159,11 @@ def format_receivables(data: dict[str, Any]) -> str:
         for index, task in enumerate(unpaid_tasks, start=1):
             lines.append(
                 f"{index}. {task.get('task_name')}\n"
-                f"   Status: {task.get('status')}\n"
-                f"   Deadline: {task.get('due_date') or '-'}\n"
-                f"   Sisa bayar: {format_rupiah(task.get('price_to_be_paid'))}"
+                f"Status: {task.get('status')}\n"
+                f"Deadline: {task.get('due_date') or '-'}\n"
+                f"Price: {format_rupiah(task.get('price'))}\n"
+                f"DP: {format_rupiah(task.get('dp'))}\n"
+                f"Sisa bayar: {format_rupiah(task.get('price_to_be_paid'))}"
             )
 
     return "\n".join(lines)
@@ -217,6 +229,35 @@ def format_weekly_summary(data: dict[str, Any]) -> str:
 
     return "\n".join(lines)
 
+def format_today_focus(data: dict[str, Any]) -> str:
+    tasks = data.get("tasks") or []
+
+    if not tasks:
+        return "Belum ada task aktif yang perlu direkomendasikan."
+
+    lines = [
+        "🎯 Rekomendasi Fokus Hari Ini",
+        "",
+    ]
+
+    for index, task in enumerate(tasks, start=1):
+        reasons = task.get("priority_reasons") or []
+        reasons_text = ", ".join(reasons[:4])
+
+        lines.append(
+            f"{index}. {task.get('task_name')}\n"
+            f"Score: {task.get('priority_score')}\n"
+            f"Status: {task.get('status')}\n"
+            f"Deadline: {task.get('due_date') or '-'}\n"
+            f"Priority: {task.get('priority')}\n"
+            f"Effort: {task.get('effort_level')}\n"
+            f"Sisa bayar: {format_rupiah(task.get('price_to_be_paid'))}\n"
+            f"Alasan: {reasons_text}\n"
+        )
+
+    lines.append("Saran: mulai dari task nomor 1, lalu lanjut task dengan effort paling kecil.")
+
+    return "\n".join(lines)
 
 async def format_response(state: AgentState) -> AgentState:
     if state.get("error"):
@@ -289,6 +330,12 @@ async def format_response(state: AgentState) -> AgentState:
         return {
             **state,
             "final_response": format_weekly_summary(data or {}),
+        }
+        
+    if intent == "recommend_today_focus":
+        return {
+            **state,
+            "final_response": format_today_focus(data or {}),
         }
 
     return {

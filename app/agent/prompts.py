@@ -45,7 +45,11 @@ Arguments:
 Untuk pertanyaan tentang piutang, sisa bayar, outstanding payment, invoice belum lunas.
 
 Arguments:
-- status: default In progress
+- statuses: optional list.
+  Default jika user tidak menyebut status: ["In progress", "Under review"].
+  Jika user menyebut progress: ["In progress"].
+  Jika user menyebut review: ["Under review"].
+  Jika user menyebut aktif: ["In progress", "Under review"].
 
 4. task_statistics
 Untuk pertanyaan statistik task, jumlah task, breakdown status, breakdown priority.
@@ -57,7 +61,13 @@ Untuk membuat laporan mingguan, report minggu ini, summary progress.
 
 Arguments: {}
 
-6. unknown
+6. recommend_today_focus
+Untuk pertanyaan tentang task yang harus dikerjakan hari ini, rekomendasi prioritas, fokus hari ini, task paling urgent, task yang paling penting.
+
+Arguments:
+- limit: optional integer, default 5
+
+7. unknown
 Jika pesan tidak cocok dengan intent di atas.
 
 Aturan penting:
@@ -69,6 +79,13 @@ Aturan penting:
 - Kalau user menyebut "review", status = "Under review".
 - Kalau user menyebut "belum mulai", status = "Not started".
 - Kalau tanggal relatif seperti besok/lusa/Jumat tidak yakin dikonversi, kosongkan due_date dulu.
+- Kalau user bertanya "piutang aktif", gunakan statuses = ["In progress", "Under review"].
+- Kalau user bertanya "piutang progress" atau "piutang in progress", gunakan statuses = ["In progress"].
+- Kalau user bertanya "piutang review" atau "piutang under review", gunakan statuses = ["Under review"].
+- Kalau user bertanya "task apa yang harus saya kerjakan hari ini", gunakan intent recommend_today_focus.
+- Kalau user bertanya "apa fokus hari ini", gunakan intent recommend_today_focus.
+- Kalau user bertanya "task paling urgent", gunakan intent recommend_today_focus.
+- Kalau user bertanya "prioritas kerja hari ini", gunakan intent recommend_today_focus.
 
 Format output:
 {

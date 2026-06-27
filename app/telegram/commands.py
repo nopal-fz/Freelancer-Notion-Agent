@@ -180,15 +180,15 @@ def format_tasks(tasks: list[dict], title: str = "📋 Task dari Notion") -> str
 
         lines.append(
             f"{index}. {task_name}\n"
-            f"   Status: {status}\n"
-            f"   Category: {category}\n"
-            f"   Deadline: {due_date}\n"
-            f"   Priority: {priority}\n"
-            f"   Task type: {task_type_text}\n"
-            f"   Effort: {effort_level}\n"
-            f"   Price: {format_rupiah(price)}\n"
-            f"   DP: {format_rupiah(dp)}\n"
-            f"   Sisa bayar: {format_rupiah(price_to_be_paid)}\n"
+            f"Status: {status}\n"
+            f"Category: {category}\n"
+            f"Deadline: {due_date}\n"
+            f"Priority: {priority}\n"
+            f"Task type: {task_type_text}\n"
+            f"Effort: {effort_level}\n"
+            f"Price: {format_rupiah(price)}\n"
+            f"DP: {format_rupiah(dp)}\n"
+            f"Sisa bayar: {format_rupiah(price_to_be_paid)}\n"
         )
 
     return "\n".join(lines)
@@ -319,11 +319,32 @@ async def handle_add_command(text: str) -> str:
     )
 
 
-async def handle_receivables_command() -> str:
+async def handle_receivables_command(text: str = "/receivables") -> str:
     mcp_client = NotionMCPClient()
 
+    normalized_text = text.strip()
+
+    if normalized_text.startswith("/receivables_progress"):
+        statuses = [
+            NOTION_OPTIONS["status"]["in_progress"],
+        ]
+        title = "💰 Piutang In Progress"
+
+    elif normalized_text.startswith("/receivables_review"):
+        statuses = [
+            NOTION_OPTIONS["status"]["under_review"],
+        ]
+        title = "💰 Piutang Under Review"
+
+    else:
+        statuses = [
+            NOTION_OPTIONS["status"]["in_progress"],
+            NOTION_OPTIONS["status"]["under_review"],
+        ]
+        title = "💰 Piutang Aktif"
+
     result = await mcp_client.calculate_receivables(
-        status=NOTION_OPTIONS["status"]["in_progress"],
+        statuses=statuses,
     )
 
     if not result.get("success"):
@@ -331,11 +352,12 @@ async def handle_receivables_command() -> str:
 
     data = result.get("data") or {}
     unpaid_tasks = data.get("unpaid_tasks") or []
+    status_filters = data.get("status_filters") or []
 
     lines = [
-        "💰 Piutang Aktif",
+        title,
         "",
-        f"Status filter: {data.get('status_filter')}",
+        f"Status filter: {', '.join(status_filters)}",
         f"Total piutang: {format_rupiah(data.get('total_receivables'))}",
         f"Jumlah task belum lunas: {data.get('unpaid_task_count')}",
     ]
@@ -347,9 +369,11 @@ async def handle_receivables_command() -> str:
         for index, task in enumerate(unpaid_tasks, start=1):
             lines.append(
                 f"{index}. {task.get('task_name')}\n"
-                f"   Status: {task.get('status')}\n"
-                f"   Deadline: {task.get('due_date') or '-'}\n"
-                f"   Sisa bayar: {format_rupiah(task.get('price_to_be_paid'))}"
+                f"Status: {task.get('status')}\n"
+                f"Deadline: {task.get('due_date') or '-'}\n"
+                f"Price: {format_rupiah(task.get('price'))}\n"
+                f"DP: {format_rupiah(task.get('dp'))}\n"
+                f"Sisa bayar: {format_rupiah(task.get('price_to_be_paid'))}"
             )
 
     return "\n".join(lines)
@@ -446,25 +470,44 @@ def handle_help_command() -> str:
         "/help\n"
         "Menampilkan daftar command.\n\n"
         "/tasks\n"
-        "Melihat task dari Notion lewat MCP.\n\n"
+        "Melihat semua task dari Notion lewat MCP.\n\n"
         "/tasks progress\n"
-        "Melihat task In progress.\n\n"
+        "Melihat task dengan status In progress.\n\n"
         "/tasks done\n"
-        "Melihat task Done.\n\n"
+        "Melihat task dengan status Done.\n\n"
         "/tasks review\n"
-        "Melihat task Under review.\n\n"
+        "Melihat task dengan status Under review.\n\n"
         "/tasks todo\n"
-        "Melihat task Not started.\n\n"
+        "Melihat task dengan status Not started.\n\n"
+        "Shortcut task:\n"
+        "/tasks_progress\n"
+        "/tasks_done\n"
+        "/tasks_review\n"
+        "/tasks_todo\n\n"
         "/add Nama task\n"
         "Menambahkan task simple lewat MCP.\n\n"
-        "Format lengkap:\n"
+        "Format lengkap /add:\n"
         "/add task=Belajar MCP Server; due=2026-06-28; status=Not started; category=Individual; priority=High; type=Tech,Learn; effort=Medium; price=250000; dp=50000; desc=Belajar dasar MCP\n\n"
+        "Finance command:\n\n"
         "/receivables\n"
-        "Menghitung piutang aktif dari task In progress.\n\n"
+        "Menghitung total piutang aktif dari task In progress + Under review.\n\n"
+        "/receivables_active\n"
+        "Menghitung piutang gabungan In progress + Under review.\n\n"
+        "/receivables_progress\n"
+        "Menghitung piutang dari task In progress saja.\n\n"
+        "/receivables_review\n"
+        "Menghitung piutang dari task Under review saja.\n\n"
+        "Analytics command:\n\n"
         "/stats\n"
-        "Melihat statistik task.\n\n"
+        "Melihat statistik task berdasarkan status, priority, dan category.\n\n"
         "/report\n"
-        "Membuat weekly freelancer report."
+        "Membuat weekly freelancer report.\n\n"
+        "Natural language juga bisa, contoh:\n"
+        "- task apa yang lagi progress?\n"
+        "- berapa piutang aktif saya?\n"
+        "- berapa piutang yang under review?\n"
+        "- buat laporan minggu ini\n"
+        "- tambah task belajar langgraph"
     )
 
 
@@ -478,13 +521,16 @@ async def handle_telegram_command(text: str) -> str:
         return await handle_add_command(normalized_text)
 
     if normalized_text.startswith("/receivables"):
-        return await handle_receivables_command()
+        return await handle_receivables_command(normalized_text)
 
     if normalized_text.startswith("/stats"):
         return await handle_stats_command()
 
     if normalized_text.startswith("/report"):
         return await handle_report_command()
+    
+    if normalized_text.startswith("/focus"):
+        return await handle_focus_command()
 
     if normalized_text.startswith("/help") or normalized_text.startswith("/start"):
         return handle_help_command()
@@ -500,3 +546,41 @@ async def handle_telegram_command(text: str) -> str:
         "/stats\n"
         "/report"
     )
+    
+async def handle_focus_command() -> str:
+    mcp_client = NotionMCPClient()
+
+    result = await mcp_client.recommend_today_focus(limit=5)
+
+    if not result.get("success"):
+        return f"Gagal membuat rekomendasi fokus lewat MCP Server.\n\nError: {result.get('message')}"
+
+    data = result.get("data") or {}
+    tasks = data.get("tasks") or []
+
+    if not tasks:
+        return "Belum ada task aktif yang perlu direkomendasikan."
+
+    lines = [
+        "🎯 Rekomendasi Fokus Hari Ini",
+        "",
+    ]
+
+    for index, task in enumerate(tasks, start=1):
+        reasons = task.get("priority_reasons") or []
+        reasons_text = ", ".join(reasons[:4])
+
+        lines.append(
+            f"{index}. {task.get('task_name')}\n"
+            f"Score: {task.get('priority_score')}\n"
+            f"Status: {task.get('status')}\n"
+            f"Deadline: {task.get('due_date') or '-'}\n"
+            f"Priority: {task.get('priority')}\n"
+            f"Effort: {task.get('effort_level')}\n"
+            f"Sisa bayar: {format_rupiah(task.get('price_to_be_paid'))}\n"
+            f"Alasan: {reasons_text}\n"
+        )
+
+    lines.append("Saran: mulai dari task nomor 1, lalu lanjut task dengan effort paling kecil.")
+
+    return "\n".join(lines)

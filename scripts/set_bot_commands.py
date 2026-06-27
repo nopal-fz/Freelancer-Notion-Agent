@@ -59,6 +59,26 @@ def main() -> None:
                 "command": "report",
                 "description": "Weekly freelancer report",
             },
+            {
+                "command": "receivables",
+                "description": "Piutang aktif",
+            },
+            {
+                "command": "receivables_progress",
+                "description": "Piutang In progress",
+            },
+            {
+                "command": "receivables_review",
+                "description": "Piutang Under review",
+            },
+            {
+                "command": "receivables_active",
+                "description": "Piutang In progress + Under review",
+            },
+            {
+                "command": "focus",
+                "description": "Rekomendasi fokus hari ini",
+            },
         ]
     }
 

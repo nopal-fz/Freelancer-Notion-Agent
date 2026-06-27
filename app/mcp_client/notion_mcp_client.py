@@ -106,12 +106,12 @@ class NotionMCPClient:
 
     async def calculate_receivables(
         self,
-        status: str = "In progress",
+        statuses: list[str] | None = None
     ) -> dict[str, Any]:
         return await self.call_tool(
             "calculate_receivables",
             {
-                "status": status,
+                "statuses": statuses
             },
         )
         
@@ -125,4 +125,15 @@ class NotionMCPClient:
         return await self.call_tool(
             "weekly_summary",
             {},
+        )
+        
+    async def recommend_today_focus(
+        self,
+        limit: int = 5,
+    ) -> dict[str, Any]:
+        return await self.call_tool(
+            "recommend_today_focus",
+            {
+                "limit": limit,
+            },
         )

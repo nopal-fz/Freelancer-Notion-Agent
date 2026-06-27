@@ -1,11 +1,12 @@
 from typing import Any
-
+from datetime import date, datetime, timedelta
 from mcp.server.fastmcp import FastMCP
 
 from app.services.notion_service import (
     NotionService,
     NOTION_OPTIONS,
 )
+from app.services.priority_engine import recommend_today_tasks
 
 mcp = FastMCP(
     name="FreelancerOS Notion MCP Server",
@@ -128,55 +129,64 @@ def create_task(
 
 @mcp.tool()
 def calculate_receivables(
-    status: str = NOTION_OPTIONS["status"]["in_progress"],
+    statuses: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Calculate total outstanding payment from Notion tasks.
 
     Default business rule:
-    Only calculate receivables from tasks with status = In progress.
+    Calculate receivables from active tasks:
+    - In progress
+    - Under review
 
     Args:
-        status: Task status to calculate receivables from.
-                Default: In progress.
+        statuses: List of task statuses to calculate receivables from.
+                  Example: ["In progress", "Under review"]
     """
     try:
         notion = notion_service()
 
-        tasks = notion.get_tasks(
-            page_size=1000,
-            status=status,
-        )
+        if not statuses:
+            statuses = [
+                NOTION_OPTIONS["status"]["in_progress"],
+                NOTION_OPTIONS["status"]["under_review"],
+            ]
 
-        unpaid_tasks = []
+        all_unpaid_tasks = []
         total_receivables = 0.0
 
-        for task in tasks:
-            price_to_be_paid = float(task.get("price_to_be_paid") or 0)
+        for status in statuses:
+            tasks = notion.get_tasks(
+                page_size=1000,
+                status=status,
+            )
 
-            if price_to_be_paid > 0:
-                total_receivables += price_to_be_paid
-                unpaid_tasks.append(
-                    {
-                        "task_name": task.get("task_name"),
-                        "status": task.get("status"),
-                        "due_date": task.get("due_date"),
-                        "price": task.get("price"),
-                        "dp": task.get("dp"),
-                        "price_to_be_paid": price_to_be_paid,
-                    }
-                )
+            for task in tasks:
+                price_to_be_paid = float(task.get("price_to_be_paid") or 0)
+
+                if price_to_be_paid > 0:
+                    total_receivables += price_to_be_paid
+                    all_unpaid_tasks.append(
+                        {
+                            "task_name": task.get("task_name"),
+                            "status": task.get("status"),
+                            "due_date": task.get("due_date"),
+                            "price": task.get("price"),
+                            "dp": task.get("dp"),
+                            "price_to_be_paid": price_to_be_paid,
+                        }
+                    )
 
         data = {
-            "status_filter": status,
+            "status_filters": statuses,
             "total_receivables": total_receivables,
-            "unpaid_task_count": len(unpaid_tasks),
-            "unpaid_tasks": unpaid_tasks,
+            "unpaid_task_count": len(all_unpaid_tasks),
+            "unpaid_tasks": all_unpaid_tasks,
         }
 
         return format_success(
             data=data,
-            message=f"Receivables calculated successfully for status: {status}.",
+            message=f"Receivables calculated successfully for statuses: {statuses}.",
         )
 
     except Exception as error:
@@ -259,8 +269,6 @@ def weekly_summary() -> dict[str, Any]:
         overdue_tasks = []
         upcoming_deadlines = []
 
-        from datetime import date, datetime, timedelta
-
         today = date.today()
         next_7_days = today + timedelta(days=7)
 
@@ -282,9 +290,11 @@ def weekly_summary() -> dict[str, Any]:
                 upcoming_deadlines.append(task)
 
         receivable_result = calculate_receivables(
-            status=NOTION_OPTIONS["status"]["in_progress"],
+            statuses=[
+                NOTION_OPTIONS["status"]["in_progress"],
+                NOTION_OPTIONS["status"]["under_review"],
+            ],
         )
-
         receivable_data = receivable_result.get("data") or {}
 
         data = {
@@ -320,6 +330,43 @@ def weekly_summary() -> dict[str, Any]:
     except Exception as error:
         return format_error(error)
 
+@mcp.tool()
+def recommend_today_focus(
+    limit: int = 5,
+) -> dict[str, Any]:
+    """
+    Recommend tasks to focus on today using priority scoring.
+
+    The score considers:
+    - priority
+    - task status
+    - deadline urgency
+    - effort level
+    - outstanding payment
+    """
+    try:
+        notion = notion_service()
+
+        tasks = notion.get_tasks(page_size=1000)
+
+        recommendations = recommend_today_tasks(
+            tasks=tasks,
+            limit=limit,
+        )
+
+        data = {
+            "recommendation_type": "today_focus",
+            "limit": limit,
+            "tasks": recommendations,
+        }
+
+        return format_success(
+            data=data,
+            message="Today focus recommendation generated successfully.",
+        )
+
+    except Exception as error:
+        return format_error(error)
 
 if __name__ == "__main__":
     mcp.settings.host = "127.0.0.1"
