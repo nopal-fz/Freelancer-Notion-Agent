@@ -13,6 +13,7 @@ from app.telegram.commands import (
     format_tasks,
     format_rupiah,
 )
+from app.services.data_parser import parse_due_date
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ async def execute_intent(state: AgentState) -> AgentState:
                 task_name=task_name,
                 status=arguments.get("status") or "Not started",
                 category=arguments.get("category") or "Individual",
-                due_date=arguments.get("due_date"),
+                due_date=parse_due_date(arguments.get("due_date")),
                 priority=arguments.get("priority") or "Medium",
                 task_type=arguments.get("task_type") or ["👨‍💻 Tech"],
                 effort_level=arguments.get("effort_level") or "Medium",
@@ -116,6 +117,37 @@ async def execute_intent(state: AgentState) -> AgentState:
         elif intent == "recommend_today_focus":
             result = await mcp_client.recommend_today_focus(
                 limit=int(arguments.get("limit") or 5),
+            )
+            
+        elif intent == "update_task":
+            query = arguments.get("query")
+
+            if not query:
+                return {
+                    **state,
+                    "tool_result": None,
+                    "error": "Nama task atau keyword task belum terdeteksi.",
+                }
+
+            result = await mcp_client.update_task(
+                query=query,
+                status=arguments.get("status"),
+                category=arguments.get("category"),
+                due_date=arguments.get("due_date"),
+                priority=arguments.get("priority"),
+                task_type=arguments.get("task_type"),
+                effort_level=arguments.get("effort_level"),
+                description=arguments.get("description"),
+                price=(
+                    float(arguments.get("price"))
+                    if arguments.get("price") is not None
+                    else None
+                ),
+                dp=(
+                    float(arguments.get("dp"))
+                    if arguments.get("dp") is not None
+                    else None
+                ),
             )
 
         else:
@@ -336,6 +368,32 @@ async def format_response(state: AgentState) -> AgentState:
         return {
             **state,
             "final_response": format_today_focus(data or {}),
+        }
+        
+    if intent == "update_task":
+        task = data or {}
+        task_type = task.get("task_type") or []
+
+        if isinstance(task_type, list):
+            task_type_text = ", ".join(task_type) if task_type else "-"
+        else:
+            task_type_text = str(task_type)
+
+        return {
+            **state,
+            "final_response": (
+                "✅ Task berhasil diupdate lewat Agent + MCP.\n\n"
+                f"Task: {task.get('task_name')}\n"
+                f"Status: {task.get('status')}\n"
+                f"Category: {task.get('category')}\n"
+                f"Deadline: {task.get('due_date')}\n"
+                f"Priority: {task.get('priority')}\n"
+                f"Task type: {task_type_text}\n"
+                f"Effort: {task.get('effort_level')}\n"
+                f"Price: {format_rupiah(task.get('price'))}\n"
+                f"DP: {format_rupiah(task.get('dp'))}\n"
+                f"Sisa bayar: {format_rupiah(task.get('price_to_be_paid'))}"
+            ),
         }
 
     return {

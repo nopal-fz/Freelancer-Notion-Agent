@@ -27,7 +27,13 @@ Arguments:
 - task_name: wajib
 - status: optional, default Not started
 - category: optional, default Individual
-- due_date: optional dalam format YYYY-MM-DD jika bisa ditentukan
+- due_date: optional. Isi dengan teks deadline dari user.
+  Contoh:
+  - "besok"
+  - "lusa"
+  - "Jumat"
+  - "minggu depan"
+  - "2026-06-28"
 - priority: optional, default Medium
 - task_type: optional list. Pilihan:
   - 👨‍💻 Tech
@@ -67,7 +73,26 @@ Untuk pertanyaan tentang task yang harus dikerjakan hari ini, rekomendasi priori
 Arguments:
 - limit: optional integer, default 5
 
-7. unknown
+7. update_task
+Untuk update task yang sudah ada, seperti mengubah status, deadline, priority, category, effort, price, DP, atau description.
+
+Arguments:
+- query: wajib. Nama task atau keyword task yang ingin diupdate.
+- status: optional. Salah satu dari:
+  - Not started
+  - In progress
+  - Done
+  - Under review
+- category: optional. Individual atau Group.
+- due_date: optional. Isi dengan teks deadline dari user, misalnya "besok", "Jumat", "2026-06-28".
+- priority: optional. High, Medium, Low.
+- task_type: optional list.
+- effort_level: optional. Small, Medium, large.
+- description: optional.
+- price: optional number.
+- dp: optional number.
+
+8. unknown
 Jika pesan tidak cocok dengan intent di atas.
 
 Aturan penting:
@@ -78,7 +103,7 @@ Aturan penting:
 - Kalau user menyebut "selesai", status = "Done".
 - Kalau user menyebut "review", status = "Under review".
 - Kalau user menyebut "belum mulai", status = "Not started".
-- Kalau tanggal relatif seperti besok/lusa/Jumat tidak yakin dikonversi, kosongkan due_date dulu.
+- Jika user menyebut deadline relatif seperti besok, lusa, Jumat, minggu depan, tetap isi due_date dengan teks tersebut. Sistem akan mengubahnya menjadi tanggal.
 - Kalau user bertanya "piutang aktif", gunakan statuses = ["In progress", "Under review"].
 - Kalau user bertanya "piutang progress" atau "piutang in progress", gunakan statuses = ["In progress"].
 - Kalau user bertanya "piutang review" atau "piutang under review", gunakan statuses = ["Under review"].

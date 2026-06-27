@@ -83,6 +83,86 @@ class NotionService:
             )
 
         return data_sources[0]["id"]
+    
+    def _build_update_properties(
+        self,
+        status: str | None = None,
+        category: str | None = None,
+        due_date: str | None = None,
+        priority: str | None = None,
+        task_type: list[str] | None = None,
+        effort_level: str | None = None,
+        description: str | None = None,
+        price: float | None = None,
+        dp: float | None = None,
+    ) -> dict[str, Any]:
+        properties = {}
+
+        if status:
+            properties[NOTION_FIELDS["status"]] = {
+                "status": {
+                    "name": status,
+                }
+            }
+
+        if category:
+            properties[NOTION_FIELDS["category"]] = {
+                "select": {
+                    "name": category,
+                }
+            }
+
+        if due_date:
+            properties[NOTION_FIELDS["due_date"]] = {
+                "date": {
+                    "start": due_date,
+                }
+            }
+
+        if priority:
+            properties[NOTION_FIELDS["priority"]] = {
+                "select": {
+                    "name": priority,
+                }
+            }
+
+        if task_type:
+            properties[NOTION_FIELDS["task_type"]] = {
+                "multi_select": [
+                    {"name": item}
+                    for item in task_type
+                ]
+            }
+
+        if effort_level:
+            properties[NOTION_FIELDS["effort_level"]] = {
+                "select": {
+                    "name": effort_level,
+                }
+            }
+
+        if description:
+            properties[NOTION_FIELDS["description"]] = {
+                "rich_text": [
+                    {
+                        "text": {
+                            "content": description,
+                        }
+                    }
+                ]
+            }
+
+        if price is not None:
+            properties[NOTION_FIELDS["price"]] = {
+                "number": float(price),
+            }
+
+        if dp is not None:
+            properties[NOTION_FIELDS["dp"]] = {
+                "number": float(dp),
+            }
+
+        return properties
 
     def get_database_schema(self) -> dict[str, Any]:
         return self.client.data_sources.retrieve(
@@ -143,6 +223,25 @@ class NotionService:
                 break
 
         return [self._parse_task(page) for page in all_results]
+    
+    def search_tasks(
+        self,
+        query: str,
+        page_size: int = 20,
+    ) -> list[dict[str, Any]]:
+        tasks = self.get_tasks(page_size=1000)
+
+        normalized_query = query.lower().strip()
+
+        matched_tasks = []
+
+        for task in tasks:
+            task_name = (task.get("task_name") or "").lower()
+
+            if normalized_query in task_name:
+                matched_tasks.append(task)
+
+        return matched_tasks[:page_size]
 
     def create_task(
         self,
@@ -235,6 +334,41 @@ class NotionService:
             parent={
                 "data_source_id": self.data_source_id,
             },
+            properties=properties,
+        )
+
+        return self._parse_task(response)
+    
+    def update_task(
+        self,
+        task_id: str,
+        status: str | None = None,
+        category: str | None = None,
+        due_date: str | None = None,
+        priority: str | None = None,
+        task_type: list[str] | None = None,
+        effort_level: str | None = None,
+        description: str | None = None,
+        price: float | None = None,
+        dp: float | None = None,
+    ) -> dict[str, Any]:
+        properties = self._build_update_properties(
+            status=status,
+            category=category,
+            due_date=due_date,
+            priority=priority,
+            task_type=task_type,
+            effort_level=effort_level,
+            description=description,
+            price=price,
+            dp=dp,
+        )
+
+        if not properties:
+            raise ValueError("Tidak ada field yang dikirim untuk update.")
+
+        response = self.client.pages.update(
+            page_id=task_id,
             properties=properties,
         )
 

@@ -137,3 +137,45 @@ class NotionMCPClient:
                 "limit": limit,
             },
         )
+        
+    async def search_tasks(
+        self,
+        query: str,
+        page_size: int = 10,
+    ) -> dict[str, Any]:
+        return await self.call_tool(
+            "search_tasks",
+            {
+                "query": query,
+                "page_size": page_size,
+            },
+        )
+
+    async def update_task(
+        self,
+        query: str,
+        status: str | None = None,
+        category: str | None = None,
+        due_date: str | None = None,
+        priority: str | None = None,
+        task_type: list[str] | None = None,
+        effort_level: str | None = None,
+        description: str | None = None,
+        price: float | None = None,
+        dp: float | None = None,
+    ) -> dict[str, Any]:
+        return await self.call_tool(
+            "update_task",
+            {
+                "query": query,
+                "status": status,
+                "category": category,
+                "due_date": due_date,
+                "priority": priority,
+                "task_type": task_type,
+                "effort_level": effort_level,
+                "description": description,
+                "price": price,
+                "dp": dp,
+            },
+        )

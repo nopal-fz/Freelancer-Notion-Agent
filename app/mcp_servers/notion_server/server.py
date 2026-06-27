@@ -7,6 +7,7 @@ from app.services.notion_service import (
     NOTION_OPTIONS,
 )
 from app.services.priority_engine import recommend_today_tasks
+from app.services.data_parser import parse_due_date
 
 mcp = FastMCP(
     name="FreelancerOS Notion MCP Server",
@@ -363,6 +364,111 @@ def recommend_today_focus(
         return format_success(
             data=data,
             message="Today focus recommendation generated successfully.",
+        )
+
+    except Exception as error:
+        return format_error(error)
+    
+@mcp.tool()
+def search_tasks(
+    query: str,
+    page_size: int = 10,
+) -> dict[str, Any]:
+    """
+    Search tasks by task name keyword.
+    """
+    try:
+        notion = notion_service()
+
+        tasks = notion.search_tasks(
+            query=query,
+            page_size=page_size,
+        )
+
+        return format_success(
+            data=tasks,
+            message="Tasks searched successfully.",
+        )
+
+    except Exception as error:
+        return format_error(error)
+    
+@mcp.tool()
+def update_task(
+    query: str,
+    status: str | None = None,
+    category: str | None = None,
+    due_date: str | None = None,
+    priority: str | None = None,
+    task_type: list[str] | None = None,
+    effort_level: str | None = None,
+    description: str | None = None,
+    price: float | None = None,
+    dp: float | None = None,
+) -> dict[str, Any]:
+    """
+    Update a task by searching task name.
+
+    If exactly one task matches, update it.
+    If multiple tasks match, return candidate tasks and ask user to be more specific.
+    """
+    try:
+        notion = notion_service()
+
+        matches = notion.search_tasks(
+            query=query,
+            page_size=10,
+        )
+
+        if not matches:
+            return {
+                "success": False,
+                "message": f"Tidak ada task yang cocok dengan query: {query}",
+                "data": {
+                    "matches": [],
+                },
+            }
+
+        if len(matches) > 1:
+            return {
+                "success": False,
+                "message": (
+                    "Ditemukan lebih dari satu task yang cocok. "
+                    "Mohon gunakan nama task yang lebih spesifik."
+                ),
+                "data": {
+                    "matches": [
+                        {
+                            "id": task.get("id"),
+                            "task_name": task.get("task_name"),
+                            "status": task.get("status"),
+                            "due_date": task.get("due_date"),
+                        }
+                        for task in matches
+                    ],
+                },
+            }
+
+        task = matches[0]
+
+        parsed_due_date = parse_due_date(due_date)
+
+        updated_task = notion.update_task(
+            task_id=task["id"],
+            status=status,
+            category=category,
+            due_date=parsed_due_date,
+            priority=priority,
+            task_type=task_type,
+            effort_level=effort_level,
+            description=description,
+            price=price,
+            dp=dp,
+        )
+
+        return format_success(
+            data=updated_task,
+            message="Task updated successfully.",
         )
 
     except Exception as error:
