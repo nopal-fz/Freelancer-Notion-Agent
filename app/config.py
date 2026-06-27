@@ -20,6 +20,9 @@ class Settings:
     NOTION_DATABASE_ID: str = os.getenv("NOTION_DATABASE_ID", "")
     NOTION_API_VERSION: str = os.getenv("NOTION_API_VERSION", "2022-06-28")
     
+    GROQ_API_KEY : str = os.getenv("GROQ_API_KEY", "")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    
     MCP_NOTION_SERVER_URL: str = os.getenv(
     "MCP_NOTION_SERVER_URL",
     "http://127.0.0.1:8101/mcp",

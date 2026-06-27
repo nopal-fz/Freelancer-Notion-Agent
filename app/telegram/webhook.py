@@ -6,6 +6,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from app.config import settings
 from app.telegram.sender import send_telegram_message
 from app.telegram.commands import handle_telegram_command
+from app.agent.graph import run_freelanceros_agent
 
 router = APIRouter(prefix="/telegram", tags=["Telegram"])
 
@@ -75,7 +76,10 @@ async def telegram_webhook(
         return {"ok": True}
 
     try:
-        reply_text = await handle_telegram_command(text)
+        if text.strip().startswith("/"):
+            reply_text = await handle_telegram_command(text)
+        else:
+            reply_text = await run_freelanceros_agent(text)
     except Exception:
         logger.exception("Failed to process Telegram command.")
         reply_text = (
