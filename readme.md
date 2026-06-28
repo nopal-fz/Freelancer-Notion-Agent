@@ -93,7 +93,7 @@ python -m scripts.set_webhook https://your-ngrok-url
 ### Terminal 4 — Run Notion MCP Server
 
 ```bash
-python -m mcp_servers.notion_server.server
+python -m app.mcp_servers.notion_server.server
 ```
 
 MCP server URL:

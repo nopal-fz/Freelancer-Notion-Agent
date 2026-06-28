@@ -1,0 +1,59 @@
+services:
+  redis:
+    image: redis:7
+    container_name: freelanceros-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  notion-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: freelanceros-notion-mcp
+    command: python -m app.mcp_servers.notion_server.server
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      MCP_NOTION_SERVER_URL: http://notion-mcp:8101/mcp
+    ports:
+      - "8101:8101"
+    depends_on:
+      - redis
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: freelanceros-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      MCP_NOTION_SERVER_URL: http://notion-mcp:8101/mcp
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - notion-mcp
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: freelanceros-scheduler
+    command: python -m app.scheduler.weekly_notifier
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      MCP_NOTION_SERVER_URL: http://notion-mcp:8101/mcp
+    depends_on:
+      - redis
+      - notion-mcp
+
+volumes:
+  redis_data:

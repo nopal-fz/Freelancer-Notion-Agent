@@ -8,11 +8,28 @@ from app.services.notion_service import (
 )
 from app.services.priority_engine import recommend_today_tasks
 from app.services.data_parser import parse_due_date
+from mcp.server.transport_security import TransportSecuritySettings
 
 mcp = FastMCP(
     name="FreelancerOS Notion MCP Server",
     stateless_http=True,
     json_response=True,
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[
+            "localhost:*",
+            "127.0.0.1:*",
+            "0.0.0.0:*",
+            "notion-mcp:*",
+            "freelanceros-notion-mcp:*",
+        ],
+        allowed_origins=[
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "http://notion-mcp:*",
+            "http://freelanceros-notion-mcp:*",
+        ],
+    ),
 )
 
 def notion_service() -> NotionService:
@@ -475,6 +492,6 @@ def update_task(
         return format_error(error)
 
 if __name__ == "__main__":
-    mcp.settings.host = "127.0.0.1"
+    mcp.settings.host = "0.0.0.0"
     mcp.settings.port = 8101
     mcp.run(transport="streamable-http")

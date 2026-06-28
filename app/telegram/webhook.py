@@ -8,6 +8,8 @@ from app.telegram.sender import send_telegram_message
 from app.telegram.commands import handle_telegram_command
 from app.agent.graph import run_freelanceros_agent
 
+from app.memory.redis_memory import RedisMemory
+
 router = APIRouter(prefix="/telegram", tags=["Telegram"])
 
 logger = logging.getLogger(__name__)
@@ -16,7 +18,7 @@ logger = logging.getLogger(__name__)
 def is_user_allowed(user_id: int) -> bool:
     allowed_ids = settings.allowed_telegram_user_ids
 
-    # Kalau kosong, artinya testing mode: semua user boleh.
+    # Kalau kosong, artinya testing mode: semua user boleh
     if not allowed_ids:
         return True
 
@@ -74,6 +76,16 @@ async def telegram_webhook(
             text="Saat ini FreelancerOS baru bisa menerima pesan teks.",
         )
         return {"ok": True}
+    
+    memory = RedisMemory()
+    await memory.save_chat_id(chat_id)
+    await memory.save_recent_message(
+        chat_id=chat_id,
+        user_id=user_id,
+        text=text,
+        role="user",
+    )
+    await memory.close()
 
     try:
         if text.strip().startswith("/"):

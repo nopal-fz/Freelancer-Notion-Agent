@@ -23,6 +23,13 @@ class Settings:
     GROQ_API_KEY : str = os.getenv("GROQ_API_KEY", "")
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+    WEEKLY_REPORT_DAY_OF_WEEK: str = os.getenv("WEEKLY_REPORT_DAY_OF_WEEK", "sun")
+    WEEKLY_REPORT_HOUR: int = int(os.getenv("WEEKLY_REPORT_HOUR", "7"))
+    WEEKLY_REPORT_MINUTE: int = int(os.getenv("WEEKLY_REPORT_MINUTE", "0"))
+    WEEKLY_REPORT_TIMEZONE: str = os.getenv("WEEKLY_REPORT_TIMEZONE", "Asia/Jakarta")
+    
     MCP_NOTION_SERVER_URL: str = os.getenv(
     "MCP_NOTION_SERVER_URL",
     "http://127.0.0.1:8101/mcp",

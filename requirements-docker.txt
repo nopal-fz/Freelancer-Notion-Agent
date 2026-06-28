@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+httpx
+python-dotenv
+
+notion-client
+
+mcp[cli]>=1.27,<2
+
+langgraph
+langchain
+langchain-groq
+
+redis
+apscheduler
+tzdata
