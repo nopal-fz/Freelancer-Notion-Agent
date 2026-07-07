@@ -22,12 +22,14 @@ mcp = FastMCP(
             "0.0.0.0:*",
             "notion-mcp:*",
             "freelanceros-notion-mcp:*",
+            "notion-mcp.railway.internal:*",
         ],
         allowed_origins=[
             "http://localhost:*",
             "http://127.0.0.1:*",
             "http://notion-mcp:*",
             "http://freelanceros-notion-mcp:*",
+            "http://notion-mcp.railway.internal:*",
         ],
     ),
 )
